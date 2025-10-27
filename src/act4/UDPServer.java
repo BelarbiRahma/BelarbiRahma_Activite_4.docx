@@ -1,38 +1,38 @@
 package act4;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
+import java.net.*;
+import java.util.*;
 
 public class UDPServer {
     public static void main(String[] args) {
         try {
-            DatagramSocket socket = new DatagramSocket(null);
-            InetSocketAddress address = new InetSocketAddress(1234);
-            socket.bind(address);
-            System.out.println("Serveur UDP démarré ");
+            // 1️ Création d’un socket UDP 
+            DatagramSocket socket = new DatagramSocket(1234);
+
+            // Liste pour stocker les adresses des clients connectés
+            Set<SocketAddress> clients = new HashSet<>();
 
             byte[] buffer = new byte[1024];
-
             while (true) {
-                try {
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                    socket.receive(packet);
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
 
-                    String message = new String(packet.getData(), 0, packet.getLength());
-                    String clientIP = packet.getAddress().getHostAddress();
-                    int clientPort = packet.getPort();
+                String message = new String(packet.getData(), 0, packet.getLength());
+                SocketAddress clientAddress = packet.getSocketAddress();
 
-                    System.out.println("[" + clientIP + ":" + clientPort + "] → " + message);
+                // Ajouter le client s’il n’est pas encore dans la liste
+                clients.add(clientAddress);
 
-                } catch (SocketException e) {
-                    System.out.println("Serveur arrêté proprement.");
-                    break; 
-                } catch (Exception e) {
-                    e.printStackTrace();
+                System.out.println("Reçu de " + clientAddress + " → " + message);
+
+                // Diffuser le message à tous les autres clients
+                for (SocketAddress addr : clients) {
+                    if (!addr.equals(clientAddress)) {
+                        byte[] sendData = message.getBytes();
+                        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr);
+                        socket.send(sendPacket);
+                    }
                 }
             }
-            socket.close();
 
         } catch (Exception e) {
             e.printStackTrace();
